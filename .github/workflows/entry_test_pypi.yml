@@ -1,5 +1,5 @@
 
-name: pytestCI
+name: entry_test_pypi
 
 on:
   push:
