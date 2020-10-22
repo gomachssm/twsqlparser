@@ -20,7 +20,7 @@ _DMY = '...dummy...'
 _BRACKET_PARE = {'[': ']', '(': ')', '{': '}'}
 # ([{'"\ 以外の一般的な記号と空白文字
 _EOP_SIMPLE_PARAM = '!#$%&)-=^~|@`;+:*]},./<>?_ \t\n\r'
-_NEWLINE = '\n'
+NEWLINE_CHAR = '\n'
 
 _END = '/*end*/'
 _REG_PARAM = r'/\*:[a-zA-Z0-9_]*\*/'
@@ -80,8 +80,8 @@ def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n
             str: 解析後のSQL
             dict: パラメータ更新後のdict
     """
-    global _NEWLINE
-    _NEWLINE = newline
+    global NEWLINE_CHAR
+    NEWLINE_CHAR = newline
     try:
         qparams = deepcopy(query_params) if query_params else {}
         _is_collect_type('base_sql', base_sql, str)
@@ -213,7 +213,7 @@ def _get_single_line_comment(sql_comment: str, delete_comment: bool) -> (str, in
 def _single_line_comment(sql_comment: str) -> (str, int):
     # この関数が呼び出される時、文字列は必ず -- から始まる
     maxlen = len(sql_comment)
-    new_line_idx = sql_comment.find(_NEWLINE)
+    new_line_idx = sql_comment.find(NEWLINE_CHAR)
     new_line_idx = maxlen if new_line_idx < 0 else new_line_idx
     comment_string = sql_comment[:new_line_idx]
     return comment_string, new_line_idx
@@ -430,7 +430,7 @@ def _get_str_in_forif(after_comment: str, qparams: dict, delete_comment: bool, t
 
 def _nxtq_in_forif(nextq: str, ldng_sp_cnt: int) -> (str, int, bool):
     if 0 <= ldng_sp_cnt:
-        nlidx = nextq.find(_NEWLINE) + 1
+        nlidx = nextq.find(NEWLINE_CHAR) + 1
         if nextq[:nlidx].strip() == '':
             return nextq[nlidx:], nlidx, True
     return nextq, 0, False
@@ -442,12 +442,12 @@ def _end_in_forif(output_value: str, nextq: str) -> (str, int):
         return output_value, 0
     # nextq: '/*end*/\n   order by ~'
     # /*end*/ でsplitするのは1回のみ
-    target_last_line = output_value.split(_NEWLINE)[-1]
-    next_first_line = nextq.split(_NEWLINE, 1)[0]
+    target_last_line = output_value.split(NEWLINE_CHAR)[-1]
+    next_first_line = nextq.split(NEWLINE_CHAR, 1)[0]
     sp_stripped = f'{target_last_line}{next_first_line}'.strip(' ')
     if sp_stripped == _END:
         # /*end*/の行に含まれる文字がスペースのみの場合、次の行から読み込ませる
-        newline_len = len(_NEWLINE)
+        newline_len = len(NEWLINE_CHAR)
         output_idx = len(output_value) - len(target_last_line)
         forif_string = output_value[:output_idx]
         add_idx = len(next_first_line) + newline_len
@@ -520,7 +520,7 @@ def _startswith_eop(base_sql: str, i: int, eop: list) -> bool:
 
 def _update_blank_line(ldng_sp_cnt: int, c: str) -> int:
     last_c = c[-1] if c else ''
-    if last_c == _NEWLINE:
+    if last_c == NEWLINE_CHAR:
         return 0
     elif ldng_sp_cnt > -1 and last_c == ' ':
         return ldng_sp_cnt + 1
