@@ -38,7 +38,6 @@ def python_version():
 
 def command(cmd: str):
     logger.debug(f'execute command: {cmd}')
-    out, error = None, None
     with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as cmd_result:
         out, error = cmd_result.communicate()
     stdout = out.decode() if out else None
@@ -57,7 +56,7 @@ def exec_cmd_in_batch(script: str):
         with open(filepath, 'w', encoding=encoding) as f:
             f.write(script)
         batch_command = filepath if ostyp == 'win' else f'sh {filepath}'
-        stdout, stderr = command(batch_command)
+        command(batch_command)
     finally:
         os.remove(filepath)
 
@@ -90,7 +89,6 @@ def main():
         clean_dir(dirname)
     install_pkg('wheel')
     exec_cmd_in_batch('python setup.py sdist bdist_wheel')
-
 
 
 logger = get_logger()
