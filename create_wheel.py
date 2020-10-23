@@ -87,8 +87,10 @@ def main():
     print(python_version())
     for dirname in ['build', 'dist', 'twsqlparser.egg-info']:
         clean_dir(dirname)
-    install_pkg('wheel')
+    for pkg in ['wheel', 'twine']:
+        install_pkg(pkg)
     exec_cmd_in_batch('python setup.py sdist bdist_wheel')
+    exec_cmd_in_batch('twine upload --repository testpypi dist/*')
 
 
 logger = get_logger()
