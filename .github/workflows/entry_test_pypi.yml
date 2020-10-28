@@ -43,5 +43,5 @@ jobs:
           echo -e "[testpypi]" >> ~/.pypirc
           echo -e "username = ${TESTPYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
-      - name: register test_pypi
-        run: twine upload -r testpypi dist/*
+      - name: register testpypi
+        run: twine upload --verbose -r testpypi dist/*
