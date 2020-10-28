@@ -37,16 +37,11 @@ jobs:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          echo -e "[distutils]" >> ~/.pypirc
-          echo -e "index-servers=" >> ~/.pypirc
-          echo -e "    pypi" >> ~/.pypirc
-          echo -e "    testpypi" >> ~/.pypirc
           echo -e "[pypi]" >> ~/.pypirc
-          echo -e "username: ${PYPI_USERNAME}" >> ~/.pypirc
-          echo -e "password: ${PYPI_PASSWORD}" >> ~/.pypirc
+          echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
+          echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
           echo -e "[testpypi]" >> ~/.pypirc
-          echo -e "repository: https://test.pypi.org/legacy/" >> ~/.pypirc
-          echo -e "username: ${TESTPYPI_USERNAME}" >> ~/.pypirc
-          echo -e "password: ${TESTPYPI_PASSWORD}" >> ~/.pypirc
+          echo -e "username = ${TESTPYPI_USERNAME}" >> ~/.pypirc
+          echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
       - name: register test_pypi
         run: twine upload -r testpypi dist/*
