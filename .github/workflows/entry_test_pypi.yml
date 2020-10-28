@@ -36,6 +36,8 @@ jobs:
         env:
           PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TESTPYPI_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
+          TESTPYPI_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
         run: |
           echo -e "[pypi]" >> ~/.pypirc
           echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
@@ -44,4 +46,4 @@ jobs:
           echo -e "username = ${TESTPYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
       - name: register testpypi
-        run: twine upload  -u ${TESTPYPI_USERNAME} -p ${TESTPYPI_PASSWORD} --verbose -r testpypi dist/*
+        run: twine upload --verbose -r testpypi dist/*
