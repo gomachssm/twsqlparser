@@ -8,8 +8,8 @@ from copy import deepcopy
 from enum import Enum
 from uuid import uuid4
 
-import exceptions
-from exceptions import Msg
+from messages import Msg
+import internal_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ def parse_file(file_path: str, query_params=None, delete_comment=True, encoding=
         base_sql = _open_file(file_path, encoding=encoding)
         sql, qparams = parse_sql(base_sql, query_params, delete_comment=delete_comment, newline=newline)
         return sql, qparams
-    except exceptions.TwspException as e:
+    except internal_exceptions.TwspException as e:
         logger.error(e.msg_txt)
 
 
@@ -89,7 +89,7 @@ def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n
         # base_sql = _format_line_forifend(base_sql)
         sql, _, _ = _parse(base_sql, qparams, delete_comment)
         return sql, qparams
-    except exceptions.TwspException as e:
+    except internal_exceptions.TwspException as e:
         logger.error(e)
         # logger.error(e.msg_txt)
 
@@ -252,7 +252,7 @@ def _multi_line_comment(sql_comment: str, qparams: dict, delete_comment: bool, t
         is_comment = True
         idx = len(comment_string)
     else:
-        raise exceptions.TwspException(Msg.E0003, sql_comment)
+        raise internal_exceptions.TwspException(Msg.E0003, sql_comment)
     return comment_string, idx, is_comment, del_last_sp
 
 
@@ -360,7 +360,7 @@ def _get_for_variable_names(for_comment: str, qparams: dict, tmp_params: dict) -
     try:
         values_list = eval(f'[({vnames_str}) {for_statement}]', {}, merged_params)
     except Exception as e:
-        raise exceptions.TwspExecuteError(Msg.E0008, e, for_statement)
+        raise internal_exceptions.TwspExecuteError(Msg.E0008, e, for_statement)
 
     prefix = str(uuid4())
     for tmp_variable in _enum_temp_variables(vnames, values_list, prefix):
@@ -473,9 +473,9 @@ def _execute_if_statement(statement: str, qparams: dict, tmp_params: dict) -> bo
             tparams[key] = value
         is_true = eval(f'True {statement} else False', {}, {**qparams, **tparams})
     except NameError as e:
-        raise exceptions.TwspExecuteError(Msg.E0005, e, statement)
+        raise internal_exceptions.TwspExecuteError(Msg.E0005, e, statement)
     if type(is_true) != bool:
-        raise exceptions.TwspExecuteError(Msg.E0006, statement)
+        raise internal_exceptions.TwspExecuteError(Msg.E0006, statement)
     return is_true
 
 
@@ -494,7 +494,7 @@ def _check_comment_type(sql_after_comment: str) -> (_CommentType, str):
 def _open_file(file_path, encoding='utf-8'):
     _is_collect_type('file_path', file_path, str)
     if not _is_absolute(file_path):
-        raise exceptions.TwspValidateError(Msg.E0002, file_path)
+        raise internal_exceptions.TwspValidateError(Msg.E0002, file_path)
     with open(file_path, 'r', encoding=encoding) as f:
         return f.read()
 
@@ -506,7 +506,7 @@ def _is_absolute(path):
 
 def _is_collect_type(argname, value, expected_type):
     if type(value) != expected_type:
-        raise exceptions.TwspValidateError(Msg.E0001, argname, expected_type, type(value))
+        raise internal_exceptions.TwspValidateError(Msg.E0001, argname, expected_type, type(value))
 
 
 def _startswith_eop(base_sql: str, i: int, eop: list) -> bool:

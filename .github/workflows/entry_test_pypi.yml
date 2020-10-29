@@ -19,7 +19,7 @@ jobs:
           pip install -U -r requirements.txt
       - name: execute pytest
         run: pytest
-  register:
+  register_testpypi:
     needs: test
     runs-on: ubuntu-latest
     steps:
