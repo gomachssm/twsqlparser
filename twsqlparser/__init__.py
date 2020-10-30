@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 # (C) 2020 gomachssm
 
-from .twsp import parse_sql, parse_file
 from .messages import Msg
 from . import internal_exceptions
+from .twsp import parse_sql, parse_file
+from .__pkg_info__ import __author__, __copyright__, __license__, __url__, __version__  # noqa: F401
 
-__copyright__ = '(C) 2020 gomachssm'
-__version__ = '0.1.1'
-__license__ = 'Apache License, Version 2.0'
-__author__ = 'gomachssm'
-__url__ = 'https://github.com/gomachssm/twsqlparser'
 __all__ = ['parse_sql', 'parse_file', 'Msg', 'internal_exceptions']
