@@ -50,6 +50,7 @@ def setup_pkg():
         long_description=load_md(abspath('./README.md')),
         long_description_content_type='text/markdown',
         keywords='two way sql twsql twowaysql two-way 2way 2way-sql',
+        python_requires=">=3.6",
         classifiers=['License :: OSI Approved :: Apache Software License',
                      'Programming Language :: Python :: 3.6',
                      'Programming Language :: Python :: 3.7',
