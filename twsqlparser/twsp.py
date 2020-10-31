@@ -8,7 +8,7 @@ from copy import deepcopy
 from enum import Enum
 from uuid import uuid4
 
-from internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValidateError
+from .internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValidateError
 
 
 logger = logging.getLogger(__name__)

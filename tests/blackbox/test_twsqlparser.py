@@ -5,10 +5,10 @@ import os
 import pytest
 import unittest.mock
 
-import twsp
+from twsqlparser import twsp
 
 DIRNAME = os.path.abspath(os.path.dirname(__file__))
-UUID4PATH = 'twsp.uuid4'
+UUID4PATH = 'twsqlparser.twsp.uuid4'
 called_count = 0
 DELETE_PATTERN = [False, True]
 
