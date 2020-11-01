@@ -37,7 +37,7 @@ jobs:
           echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
       - name: update version for tet
         run: |
-          timestmp=`date +%Y_%m_%d.%H_%M_%S`
+          timestmp=`date +%Y%m%d.%H%M%S`
           version=`cat twsqlparser/__pkg_info__.py | grep version | sed -r "s/^.+'(.+)'$/\1/"`
           echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
       - name: pip install
