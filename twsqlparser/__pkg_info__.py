@@ -2,6 +2,7 @@
 # (C) 2020 gomachssm
 
 __copyright__ = '(C) 2020 gomachssm'
+# Change version just before release
 __version__ = '0.1.3'
 __license__ = 'Apache License, Version 2.0'
 __author__ = 'gomachssm'
