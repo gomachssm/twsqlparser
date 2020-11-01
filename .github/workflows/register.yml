@@ -1,0 +1,71 @@
+name: register pypi / testpypi
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: pip install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -U -r requirements.txt
+      - name: execute pytest
+        run: pytest
+
+  register_testpypi:
+    needs: test
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'tags/test')
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: Init .pypirc
+        env:
+          TESTPYPI_USERNAME: ${{ secrets.TESTPYPI_USERNAME }}
+          TESTPYPI_PASSWORD: ${{ secrets.TESTPYPI_PASSWORD }}
+        run: |
+          echo -e "[testpypi]" >> ~/.pypirc
+          echo -e "username = ${TESTPYPI_USERNAME}" >> ~/.pypirc
+          echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
+      - name: update version for tet
+        run: |
+          timestmp=`date +%Y_%m_%d.%H_%M_%S`
+          version=`cat twsqlparser/__pkg_info__.py | grep version | sed -r "s/^.+'(.+)'$/\1/"`
+          echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
+      - name: pip install
+        run: pip install -U wheel twine
+      - name: build wheel
+        run: python setup.py sdist bdist_wheel
+      - name: register testpypi
+        run: twine upload --verbose -r testpypi dist/*
+
+  register_pypi:
+    needs: test
+    runs-on: ubuntu-latest
+    if: contains(github.ref, 'tags/v')
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: Init .pypirc
+        env:
+          PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          echo -e "[pypi]" >> ~/.pypirc
+          echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
+          echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
+      - name: pip install
+        run: pip install -U wheel twine
+      - name: build wheel
+        run: python setup.py sdist bdist_wheel
+      - name: register testpypi
+        run: twine upload --verbose dist/*
