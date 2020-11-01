@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup Python
         uses: actions/setup-python@v2
-    - name: pip install
-      run: pip install -U wheel twine
-    - name: build wheel
-      run: python setup.py sdist bdist_wheel
+      - name: pip install
+        run: pip install -U wheel twine
+      - name: build wheel
+        run: python setup.py sdist bdist_wheel
