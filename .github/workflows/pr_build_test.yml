@@ -3,7 +3,7 @@ name: build test for Pull requests
 on:
   push:
     pull_request:
-      - *
+      - '*'
 
 jobs:
   pytest:
