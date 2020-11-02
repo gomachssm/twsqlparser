@@ -1,8 +1,20 @@
 # TWSqlParser (TwoWaySqlParser) #
 
 ```text
+[English]
 The readme for this product is written in Japanese.
 If you want to read it in other languages, please use a translation tool.
+
+[Japanese]
+このプロダクトのreadmeは日本語で記載されています。
+もし別の言語で読みたい場合は、翻訳ツールを使って下さい。
+```
+
+## インストール方法
+
+以下のコマンドでインストールを行います。
+```shell script
+pip install twsqlparser
 ```
 
 ## TWSqlParser とは
@@ -47,7 +59,7 @@ SQL実行に利用するモジュールが対応しているか確認した上�
 
 このモジュールの呼び出し方は2通りあります。
 
-1: `parse_file`
+1: `twsqlparser.parse_file`
 
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
@@ -59,7 +71,7 @@ SQL実行に利用するモジュールが対応しているか確認した上�
 
 戻り値 は `parse_sql` 参照
 
-2: `parse_sql`
+2: `twsqlparser.parse_sql`
 
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
@@ -149,8 +161,7 @@ select :param from xxx
     * `/*` の直後が `$` ではない
     * `/*` と `*/` の間にスペース ` ` など変数として利用できない文字が存在する
 
-{.warning}
-: 直接埋め込みはSQLインジェクションが行われる可能性がある為、実装には十分注意してください。
+:warning: : 直接埋め込みはSQLインジェクションが行われる可能性がある為、実装には十分注意してください。
   可能な限り直接埋め込みを避け、パラメータとして埋め込む方法を検討する必要があります。
   特に、利用者が変更可能な値を直接埋め込みすることは避ける必要があります。どうしても必要な場合は十分な入力値検証が必要です。
 
@@ -268,3 +279,15 @@ where 1 = 1
 ## ライセンス
 
 Apache License, Version 2.0
+
+## その他
+
+このライブラリを使った感想があれば、twitterやブログに投稿をお願いします。
+その時、 `twsqlparser` の単語を含めていただけると
+作者のモチベーション向上や不具合改修、機能追加に繋がります。
+twitterに投稿する場合は、ハッシュタグ `#twsqlparser` で投稿して頂きたいです。
+
+機能追加、改善要望、バグ報告はtwitterまたはissueに投稿をお願いします。
+
+バグ、機能追加など、いずれも作者が開発可能なペースで進みます。
+素早い対応は期待しないようお願いします。
