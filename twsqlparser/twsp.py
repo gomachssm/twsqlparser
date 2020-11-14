@@ -2,11 +2,13 @@
 # (C) 2020 gomachssm
 
 import logging
+import os
 import pathlib
 import re
 from copy import deepcopy
 from enum import Enum
 from uuid import uuid4
+from functools import lru_cache
 
 from .internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValidateError
 
@@ -362,7 +364,7 @@ def _get_for_variable_names(for_comment: str, qparams: dict, tmp_params: dict) -
     except Exception as e:
         raise TwspExecuteError(Msg.E0008, e, for_statement)
 
-    prefix = str(uuid4())
+    prefix = str(uuid4()).replace('-', '_')
     for tmp_variable in _enum_temp_variables(vnames, values_list, prefix):
         yield {**tmp_params, **tmp_variable}
     yield {_DMY: True}
@@ -491,6 +493,17 @@ def _check_comment_type(sql_after_comment: str) -> (_CommentType, str):
             return ctyp, matched[0]
 
 
+def __get_cache_maxsize() -> int:
+    default_size = 20
+    env_size = os.getenv('TWSP_CACHE_SIZE')
+    try:
+        size = int(env_size)
+    except Exception:
+        size = None
+    return size if size else default_size
+
+
+@lru_cache(maxsize=__get_cache_maxsize())
 def _open_file(file_path, encoding='utf-8'):
     _is_collect_type('file_path', file_path, str)
     if not _is_absolute(file_path):
@@ -565,7 +578,6 @@ def _merge_qparams(qparams: dict, tmp_params: dict) -> dict:
 
 
 if __name__ == '__main__':
-    import os
     # testcase = 'example1_if'
     testcase = 'example2_for'
     params = {'table_name': 'TABNAME', 't_param': True, 'f_param': False, 'c1': "'ABC'", 'c2': "'IJK'",
