@@ -21,6 +21,3 @@ for row in cur.fetchall():
     print(row)
 conn.commit()
 conn.close()
-
-
-

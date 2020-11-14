@@ -578,7 +578,6 @@ def _merge_qparams(qparams: dict, tmp_params: dict) -> dict:
 
 
 if __name__ == '__main__':
-    import os
     # testcase = 'example1_if'
     testcase = 'example2_for'
     params = {'table_name': 'TABNAME', 't_param': True, 'f_param': False, 'c1': "'ABC'", 'c2': "'IJK'",
