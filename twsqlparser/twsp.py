@@ -575,12 +575,3 @@ def _merge_qparams(qparams: dict, tmp_params: dict) -> dict:
     for key, value in _tmpp_items(tmp_params):
         merged_params[key] = value
     return merged_params
-
-
-if __name__ == '__main__':
-    # testcase = 'example1_if'
-    testcase = 'example2_for'
-    params = {'table_name': 'TABNAME', 't_param': True, 'f_param': False, 'c1': "'ABC'", 'c2': "'IJK'",
-              'dct': {'k1': 'v1', 'k2': 'v2'}}
-    input_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f'../tests/data/input/{testcase}.sql'))
-    actual, rparam = parse_file(input_path, params, False)
