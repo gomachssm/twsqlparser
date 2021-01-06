@@ -11,8 +11,6 @@ def pip_installed_map() -> dict:
     for p in pip._internal.commands.freeze.freeze():
         package, _, version = p.split('=')
         packs[package] = version
-    from pprint import pprint
-    pprint(packs)
     return packs
 
 
