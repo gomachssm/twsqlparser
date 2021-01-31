@@ -1,3 +1,4 @@
 twsqlparser
 pg8000
 sqlalchemy
+psycopg2
