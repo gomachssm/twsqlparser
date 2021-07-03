@@ -15,14 +15,11 @@ from .internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValid
 
 logger = logging.getLogger(__name__)
 
+NEWLINE_CHAR = '\n'
+
 _TN = 'tmpnm'
 _VL = 'value'
 _DMY = '...dummy...'
-
-_BRACKET_PARE = {'[': ']', '(': ')', '{': '}'}
-# ([{'"\ 以外の一般的な記号と空白文字
-_EOP_SIMPLE_PARAM = '!#$%&)-=^~|@`;+:*]},./<>?_ \t\n\r'
-NEWLINE_CHAR = '\n'
 
 _END = '/*end*/'
 _REG_PARAM = r'/\*:[a-zA-Z0-9_]*\*/'
@@ -30,6 +27,15 @@ _REG_DIRECT = r'/\*\$[a-zA-Z0-9_]*\*/'
 _REG_IF = r'/\*%if .+?\*/'
 _REG_FOR = r'/\*%for .+? in .+?\*/'
 _REG_END = r'/\*end\*/'
+
+_FIND_TARGETS = ('"', "'", '(', '[', '{', '--', '/*', )
+_BRACKET_PARE = {'[': ']', '(': ')', '{': '}'}
+# ([{'"\ 以外の一般的な記号と空白文字
+_EOP_SIMPLE_PARAM = ('!', '#', '$', '%', '&', ')', '-', '=', '^', '~',
+                     '|', '@', '`', ';', '+', ':', '*', ']', '}',
+                     ',', '.', '/', '<', '>', '?', '_', ' ',
+                     '\t', '\n', '\r', )
+_EOP_END = (_END, )
 
 
 class _CommentType(Enum):
@@ -104,7 +110,7 @@ def _parse(base_sql: str, qparams: dict, delete_comment: bool, eop=None, tmp_par
         base_sql (str): 元となるSQL
         qparams (dict): パラメータ
         delete_comment (bool): コメント削除フラグ
-        eop (str or list): 解析終了文字
+        eop (tuple->str or None): 解析終了文字 End of parse
         tmp_params (dict): for内の一時パラメータ default: None
         after_pcmt (bool): パラメータ直後フラグ default: False
         ldng_sp_cnt (int): 行頭から続く空白文字の個数 default: 0
@@ -118,11 +124,11 @@ def _parse(base_sql: str, qparams: dict, delete_comment: bool, eop=None, tmp_par
             int: return時のインデックス
     """
     q = []
-    max_idx = len(base_sql) - 1
+    max_idx = len(base_sql)
     i = 0
     tmp_params = tmp_params if tmp_params else {}
-    while i <= max_idx and not _startswith_eop(base_sql, i, eop):
-        c, cc, i = _next_chars(base_sql, i, max_idx)
+    while i < max_idx and not _startswith_eop(base_sql, i, eop):
+        c, cc, i = _next_chars(base_sql, i, max_idx, eop)
         c, i, del_last_sp = _parse_switch_by_char(base_sql, c, cc, i, qparams, delete_comment, tmp_params, after_pcmt,
                                                   ldng_sp_cnt)
         if del_last_sp:
@@ -155,9 +161,21 @@ def _nxtchr(string: str, idx: int):
     return string[idx], idx + 1
 
 
-def _next_chars(string: str, idx: int, mxidx: int) -> (str, str, int):
-    c, i = _nxtchr(string, idx)
-    cc = f'{c}{string[i]}' if i <= mxidx else None
+def _fnd(string: str, target: str):
+    index = string.find(target)
+    return index if 0 <= index else len(string)
+
+
+def _next_chars(string: str, idx: int, mxidx: int, eop=None) -> (str, str, int):
+    targets = _FIND_TARGETS + eop if eop else _FIND_TARGETS
+    min_idx = min([_fnd(string[idx:], tgt) for tgt in targets])
+    if min_idx == 0:
+        c, i = _nxtchr(string, idx)
+        cc = f'{c}{string[i]}' if i < mxidx else None
+    else:
+        i = idx + min_idx
+        c = string[idx:i]
+        cc = c
     return c, cc, i
 
 
@@ -420,7 +438,7 @@ def _get_str_in_forif(after_comment: str, qparams: dict, delete_comment: bool, t
     nextq, after_idx, del_last_sp = _nxtq_in_forif(after_comment, ldng_sp_cnt)
     # 改行削除済みの場合、 ldng_sp_cnt は 0 から
     ldng_sp_cnt = -1 if after_comment == nextq else 0
-    output_value, _, vlen = _parse(nextq, qparams, delete_comment, [_END], tmp_params=tmp_params,
+    output_value, _, vlen = _parse(nextq, qparams, delete_comment, _EOP_END, tmp_params=tmp_params,
                                    ldng_sp_cnt=ldng_sp_cnt)
     nextq = nextq[vlen:]
     after_idx += vlen
@@ -532,14 +550,18 @@ def _startswith_eop(base_sql: str, i: int, eop: list) -> bool:
 
 
 def _update_blank_line(ldng_sp_cnt: int, c: str) -> int:
-    last_c = c[-1] if c else ''
-    if last_c == NEWLINE_CHAR:
-        return 0
-    elif ldng_sp_cnt > -1 and last_c == ' ':
-        return ldng_sp_cnt + 1
-    elif last_c == '':
+    if not c:
         return ldng_sp_cnt
-    return -1
+
+    ridx = c.rfind(NEWLINE_CHAR)
+    if ldng_sp_cnt < 0 and ridx < 0 == 1:
+        return -1
+    after_nl = c[ridx + 1:]
+    if after_nl.lstrip(' ') == '':
+        # 改行後、全部スペースの場合
+        return len(after_nl)
+    else:
+        return -1
 
 
 def _delete_last_space(q: list) -> list:
@@ -575,12 +597,3 @@ def _merge_qparams(qparams: dict, tmp_params: dict) -> dict:
     for key, value in _tmpp_items(tmp_params):
         merged_params[key] = value
     return merged_params
-
-
-if __name__ == '__main__':
-    # testcase = 'example1_if'
-    testcase = 'example2_for'
-    params = {'table_name': 'TABNAME', 't_param': True, 'f_param': False, 'c1': "'ABC'", 'c2': "'IJK'",
-              'dct': {'k1': 'v1', 'k2': 'v2'}}
-    input_path = os.path.abspath(os.path.join(os.path.dirname(__file__), f'../tests/data/input/{testcase}.sql'))
-    actual, rparam = parse_file(input_path, params, False)

@@ -1,0 +1,3 @@
+twsqlparser
+sqlalchemy
+mysql-connector-python

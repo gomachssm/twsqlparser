@@ -1,0 +1,25 @@
+version: "3.3"
+
+services:
+  sample_postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: --encoding=UTF-8 --locale=C -A password
+    volumes:
+      - ./compose_ddl:/docker-entrypoint-initdb.d
+  py:
+    image: python:3.9
+    depends_on:
+      - sample_postgres
+    environment:
+      DBHOST: sample_postgres
+    working_dir: /opt/app
+    volumes:
+      - ./src:/opt/app
+    entrypoint: >
+      /bin/bash -c 'pip install -r sample_requirements.txt &&
+                    while true ; do sleep 60; done'
+#    command: /bin/bash -c 'while true ; do sleep 60; done'
