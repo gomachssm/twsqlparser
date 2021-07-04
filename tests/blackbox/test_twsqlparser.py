@@ -43,8 +43,8 @@ def mockid():
 
 @pytest.mark.parametrize('bs, qp, dc, eop, ap, lsc, expr, expl, expi', [
     ('hoge', {}, False, None, False, -1, 'hoge', -1, 4),
-    ('ho/*end*/ge', {}, False, [twsp._END], False, -1, 'ho', -1, 2),
-    ('"ho/*end*/"ge', {}, False, [twsp._END], False, -1, '"ho/*end*/"ge', -1, 13),
+    ('ho/*end*/ge', {}, False, twsp._EOP_END, False, -1, 'ho', -1, 2),
+    ('"ho/*end*/"ge', {}, False, twsp._EOP_END, False, -1, '"ho/*end*/"ge', -1, 13),
 ])
 def test_unit__parse(bs, qp, dc, eop, ap, lsc, expr, expl, expi):
     result, ldng_sp_cnt, idx = twsp._parse(bs, qp, dc, eop, ap, lsc)
@@ -104,6 +104,7 @@ def test_parse_singleline_comment(q, delete_comment):
     ExpSql("select /*:p1*/ from a", "select :p1 from a"),
     ExpSql("select /*:p1*/\n from a", "select :p1\n from a"),
     ExpSql("select /*:p1*/12345 from a", "select :p1 from a"),
+    ExpSql("select /*:p1*/123.4 from a", "select :p1 from a"),
     ExpSql("select /*:p1*/'abc def' from a", "select :p1 from a"),
     ExpSql("select /*:p1*/0 from a where c1 = /*:p2*/'x'", "select :p1 from a where c1 = :p2"),
     ExpSql("select /*:p1*/'foo bar' from a where c1 = /*:p2*/0", "select :p1 from a where c1 = :p2"),
@@ -322,6 +323,20 @@ def test_parse_file(path, addparams):
     exp = read(absp(f'./data/expected/{path}.sql'))
     assert_sql_oneline(actual, exp, f'{path}.sql')
     assert_result_param(params, rparam, addparams)
+
+
+@pytest.mark.parametrize('s, i, expected', [
+    ('hoge', 0, ('hoge', 'hoge', 4)),
+    ('hoge', 1, ('oge', 'oge', 4)),
+    ('hoge', 2, ('ge', 'ge', 4)),
+    ('hoge', 3, ('e', 'e', 4)),
+    # ('ho/*end*/ge', 0, 'ho'),
+    # ('"ho/*end*/"ge', 0, '"ho/*end*/"ge', -1, 13),
+])
+def test__next_chars(s, i, expected):
+    m = len(s)
+    actual = twsp._next_chars(s, i, m)
+    assert actual == expected
 
 
 def assert_sql_oneline(a: str, e: str, param=None):

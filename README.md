@@ -1,8 +1,22 @@
 # TWSqlParser (TwoWaySqlParser) #
 
+[![Downloads](https://static.pepy.tech/personalized-badge/twsqlparser?period=total&units=international_system&left_color=grey&right_color=blue&left_text=total%20downloads)](https://pepy.tech/project/twsqlparser)
+
 ```text
+[English]
 The readme for this product is written in Japanese.
 If you want to read it in other languages, please use a translation tool.
+
+[Japanese]
+このプロダクトのreadmeは日本語で記載されています。
+もし別の言語で読みたい場合は、翻訳ツールを使って下さい。
+```
+
+## インストール方法
+
+以下のコマンドでインストールを行います。
+```shell script
+pip install twsqlparser
 ```
 
 ## TWSqlParser とは
@@ -14,7 +28,7 @@ SQL構文として間違った結果を返却する可能性があります。
 
 以下のSQLを例に概要を説明します。
 
-```oracle-sql
+```sql
 select schemaname, tablename
 from pg_tables
 where tablename = /*:table_name*/'pg_type';
@@ -22,7 +36,7 @@ where tablename = /*:table_name*/'pg_type';
 
 この場合、TWSPを利用すると以下のSQLに変換されます。
 
-```oracle-sql
+```sql
 select schemaname, tablename
 from pg_tables
 where tablename = :table_name;
@@ -43,11 +57,54 @@ SQL実行に利用するモジュールが対応しているか確認した上�
 
 ※ バインドパラメータの `?` や `:0` 、 `%s` といった書き方には対応していません。
 
+## 実装例
+
+```text
+project_root
+  +-- main.py
+  +-- select.sql
+  +-- requirements.txt
+```
+
+```python main.py
+import os
+import pg8000
+import twsqlparser
+
+base = os.path.dirname(__file__)
+sql_path = os.path.abspath(os.path.join(base, './select.sql'))
+base_param = {'pkg': 'sqlparser'}
+
+pg8000.paramstyle = 'named'    # <- very important, if you use pg8000.
+
+pg_con_info = {
+    'host': 'localhost',
+    'port': 5432,
+    'database': 'postgres',
+    'user': 'postgres',
+    'password': 'password'
+}
+
+sql_parameter = {'isbn': '978-3-16-148410-0'}
+
+with pg8000.connect(**pg_com_info) as con:
+    sql, param = twsqlparser.parse_file(sql_path, sql_parameter)
+    res = con.run(sql, param)
+    print(res)
+```
+
+```sql select.sql
+select * from book
+/*%if isbn*/
+where isbn = /*:isbn*/'978-1-23-456789-0'
+/*end*/
+``````
+
 ## 関数の利用方法
 
 このモジュールの呼び出し方は2通りあります。
 
-1: `parse_file`
+1: `twsqlparser.parse_file`
 
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
@@ -59,7 +116,7 @@ SQL実行に利用するモジュールが対応しているか確認した上�
 
 戻り値 は `parse_sql` 参照
 
-2: `parse_sql`
+2: `twsqlparser.parse_sql`
 
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
@@ -98,7 +155,8 @@ SQL実行に利用するモジュールが対応しているか確認した上�
   * また、コメントの直後に連続して文字が続く場合、その値はダミー値として扱われます。
     * ダミー値として扱う文字は `*/` の直後から以下の文字を見つけるまでです。
         * スペース ` `、タブ `\t`、改行 `\r` `\n` `\r\n`。
-        * ``'!#$%&)-=^~|@`;+:*]},./<>?_`` ※ `[{('"\` 以外の記号
+        * ``'!#$%&)-=^~|@`;+:*]},/<>?_`` ※ `[{('"\` 以外の記号
+          * dictやlistをパラメータに指定することは出来ますが、任意の要素のみを抽出することは出来ません。
         * パラメータコメントの直後が `'` や `"` の場合、クォートに囲まれた文字列をダミー値として識別します。
         * パラメータコメントの直後が `(` や `[` 、 `{` の場合、それに対応する閉じ括弧までを
           ダミー値として識別します。
@@ -115,13 +173,13 @@ SQL実行に利用するモジュールが対応しているか確認した上�
 
 * 利用例
 
-```oracle-sql input.sql
+```sql input.sql
 select /*:param*/'dummy value' from xxx
 ```
 
 * 解析後
 
-```oracle-sql output.sql
+```sql output.sql
 select :param from xxx
 ```
 
@@ -135,7 +193,7 @@ select :param from xxx
   * また、コメントの直後に連続して文字が続く場合、その値はダミー値として扱われます。
     * ダミー値として扱う文字は `*/` の直後から以下の文字を見つけるまでです。
         * スペース ` `、タブ `\t`、改行 `\r` `\n` `\r\n`。
-        * ``'!#$%&)-=^~|@`;+:*]},./<>?_`` ※ `[{('"\` 以外の記号
+        * ``'!#$%&)-=^~|@`;+:*]},/<>?_`` ※ `[{('"\` 以外の記号
         * パラメータコメントの直後が `'` や `"` の場合、クォートに囲まれた文字列をダミー値として識別します。
         * パラメータコメントの直後が `(` や `[` 、 `{` の場合、それに対応する閉じ括弧までを
           ダミー値として識別します。
@@ -149,24 +207,23 @@ select :param from xxx
     * `/*` の直後が `$` ではない
     * `/*` と `*/` の間にスペース ` ` など変数として利用できない文字が存在する
 
-{.warning}
-: 直接埋め込みはSQLインジェクションが行われる可能性がある為、実装には十分注意してください。
+:warning: : 直接埋め込みはSQLインジェクションが行われる可能性がある為、実装には十分注意してください。
   可能な限り直接埋め込みを避け、パラメータとして埋め込む方法を検討する必要があります。
   特に、利用者が変更可能な値を直接埋め込みすることは避ける必要があります。どうしても必要な場合は十分な入力値検証が必要です。
 
 * 利用例
 
-```oracle-sql input.sql
+```sql input.sql
 select /*$p*/'dummy value' from xxx
 ```
 
-```python input_parameter
+```python input_parameter.py
 {'p': "'Parameter is output directly.'"}
 ```
 
 * 解析後
 
-```oracle-sql output.sql
+```sql output.sql
 select 'Parameter is output directly.' from xxx
 ```
 
@@ -192,7 +249,7 @@ select 'Parameter is output directly.' from xxx
 
 * 利用例
 
-```oracle-sql input.sql
+```sql input.sql
 select
   /*%if a == 'foo'*/
     'dummy value'
@@ -206,7 +263,7 @@ from xxx
 
 * 解析後
 
-```oracle-sql input.sql
+```sql input.sql
 select
     'dummy value'
 from xxx
@@ -236,7 +293,7 @@ from xxx
 
 * 利用例
 
-```oracle-sql input.sql
+```sql input.sql
 select * from xxx
 where 1 = 1
 /*%for i, v in enumerate(values)*/
@@ -250,7 +307,7 @@ where 1 = 1
 
 * 解析後
 
-```oracle-sql output.sql
+```sql output.sql
 select * from xxx
 where 1 = 1
   and col0 in :5a124b33-b25f-44e8-8d4b-144f3ef376dc_0_v
@@ -268,3 +325,15 @@ where 1 = 1
 ## ライセンス
 
 Apache License, Version 2.0
+
+## その他
+
+このライブラリを使った感想があれば、twitterやブログに投稿をお願いします。
+その時、 `twsqlparser` の単語を含めていただけると
+作者のモチベーション向上や不具合改修、機能追加に繋がります。
+twitterに投稿する場合は、ハッシュタグ `#twsqlparser` で投稿して頂きたいです。
+
+機能追加、改善要望、バグ報告はtwitterまたはissueに投稿をお願いします。
+
+バグ、機能追加など、いずれも作者が開発可能なペースで進みます。
+素早い対応は期待しないようお願いします。

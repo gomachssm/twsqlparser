@@ -1,0 +1,25 @@
+version: "3.3"
+
+services:
+  sample_db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: mysql
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: mysql
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - ./compose_ddl:/docker-entrypoint-initdb.d
+  py:
+    image: python:3.9
+    depends_on:
+      - sample_db
+    environment:
+      DBHOST: sample_db
+    working_dir: /opt/app
+    volumes:
+      - ./src:/opt/app
+    entrypoint: >
+      /bin/bash -c 'pip install -r sample_requirements.txt &&
+                    while true ; do sleep 60; done'
+#    command: /bin/bash -c 'while true ; do sleep 60; done'

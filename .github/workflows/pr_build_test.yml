@@ -1,13 +1,12 @@
-
-name: pytest_only
+name: build test for Pull requests
 
 on:
   push:
-    branches-ignore:
-      - master
+    pull_request:
+      - '*'
 
 jobs:
-  build:
+  pytest:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,3 +21,14 @@ jobs:
         run: pip install -U -r requirements.txt
       - name: execute pytest
         run: pytest
+
+  build-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+      - name: pip install
+        run: pip install -U wheel twine
+      - name: build wheel
+        run: python setup.py sdist bdist_wheel
