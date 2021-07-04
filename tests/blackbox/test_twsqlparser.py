@@ -104,6 +104,7 @@ def test_parse_singleline_comment(q, delete_comment):
     ExpSql("select /*:p1*/ from a", "select :p1 from a"),
     ExpSql("select /*:p1*/\n from a", "select :p1\n from a"),
     ExpSql("select /*:p1*/12345 from a", "select :p1 from a"),
+    ExpSql("select /*:p1*/123.4 from a", "select :p1 from a"),
     ExpSql("select /*:p1*/'abc def' from a", "select :p1 from a"),
     ExpSql("select /*:p1*/0 from a where c1 = /*:p2*/'x'", "select :p1 from a where c1 = :p2"),
     ExpSql("select /*:p1*/'foo bar' from a where c1 = /*:p2*/0", "select :p1 from a where c1 = :p2"),
