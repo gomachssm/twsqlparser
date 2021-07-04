@@ -7,7 +7,6 @@ import pg8000
 import twsqlparser as twsp
 
 import data_creator
-import sample_execute
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 pg8000.paramstyle = 'named'
@@ -30,7 +29,7 @@ def main():
 
 
 def truncate_table(cur):
-    cur.execute(f'truncate table sample_lang')
+    cur.execute('truncate table sample_lang')
 
 
 def insert_with_twsp(cur, path, params=None):

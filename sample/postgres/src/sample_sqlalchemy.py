@@ -34,7 +34,7 @@ def main():
 
 
 def truncate_table(conn):
-    conn.execute(f'truncate table sample_lang')
+    conn.execute('truncate table sample_lang')
 
 
 def insert_with_twsp(conn, path, params=None):
