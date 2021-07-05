@@ -37,8 +37,9 @@ jobs:
           echo -e "password = ${TESTPYPI_PASSWORD}" >> ~/.pypirc
       - name: update version for tet
         run: |
+          version=`echo ${GITHUB_REF} | sed -r "s/^.*v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/"`
           timestmp=`date +%Y%m%d.%H%M%S`
-          version=`cat twsqlparser/__pkg_info__.py | grep version | sed -r "s/^.+'(.+)'$/\1/"`
+          echo -e "__version__ = '${version}.${timestmp}'"
           echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
       - name: pip install
         run: pip install -U wheel twine
@@ -63,7 +64,9 @@ jobs:
           echo -e "[pypi]" >> ~/.pypirc
           echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
-          echo -e `cat twsqlparser/__pkg_info__.py | grep version | sed -r "s/^.+'(.+)'$/\1/"`
+          version=`echo ${GITHUB_REF} | sed -r "s/^.*v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/"`
+          echo -e "__version__ = '${version}.${timestmp}'"
+          echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
       - name: pip install
         run: pip install -U wheel twine
       - name: build wheel
