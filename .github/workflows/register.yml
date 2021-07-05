@@ -63,6 +63,7 @@ jobs:
           echo -e "[pypi]" >> ~/.pypirc
           echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
+          echo -e `cat twsqlparser/__pkg_info__.py | grep version | sed -r "s/^.+'(.+)'$/\1/"`
       - name: pip install
         run: pip install -U wheel twine
       - name: build wheel
