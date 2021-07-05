@@ -65,8 +65,8 @@ jobs:
           echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
           version=`echo ${GITHUB_REF} | sed -r "s/^.*v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/"`
-          echo -e "__version__ = '${version}.${timestmp}'"
-          echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
+          echo -e "__version__ = '${version}'"
+          echo -e "__version__ = '${version}'" >> twsqlparser/__pkg_info__.py
       - name: pip install
         run: pip install -U wheel twine
       - name: build wheel
