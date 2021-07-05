@@ -149,6 +149,7 @@ def test_parse_multicomment_direct(q):
     ExpSql("select 'x' from a where c1 in /*$p3*/(0, 1, 2)", "select 'x' from a where c1 in (7, 8, 9)"),
     ExpSql("select /*$p1*/9, /*$p2*/, /*$p3*/9 from a", "select A, B, (7, 8, 9) from a"),
     ExpSql("select 1 from a where x in (/*$p1*/9, /*$p2*/, /*$p3*/9)", "select 1 from a where x in (A, B, (7, 8, 9))"),
+    ExpSql("select * from /*$p1*/pg_stat", "select * from A"),
 ])
 def test_parse_multicomment_direct_brkt(q):
     params = {'p1': 'A', 'p2': 'B', 'p3': (7, 8, 9)}
