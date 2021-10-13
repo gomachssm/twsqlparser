@@ -53,7 +53,8 @@ where tablename = :table_name;
 TWSPではバインドパラメータを次の形式で埋め込むことができます。
 SQL実行に利用するモジュールが対応しているか確認した上でTWSPを利用してください。
 
-* `:parameter` 形式
+* `:named` 形式
+* `$(pyformat)s` 形式
 
 ※ バインドパラメータの `?` や `:0` 、 `%s` といった書き方には対応していません。
 
@@ -113,6 +114,7 @@ where isbn = /*:isbn*/'978-1-23-456789-0'
 |comment_delete|bool| |True|`parse_sql` 参照|
 |encoding|str| |'utf-8'|対象ファイルの文字コード|
 |newline|str| |'\n'|対象ファイルの改行コード|
+|paramstyle|twsp.ParamStyle| |NAMED|パラメータ表示形式<br>twsp.ParamStyle.NAMED, twsp.ParamStyle.PYFORMAT|
 
 戻り値 は `parse_sql` 参照
 
@@ -124,6 +126,7 @@ where isbn = /*:isbn*/'978-1-23-456789-0'
 |query_params|dict| |None|SQL実行時に利用するパラメータ<br>パラメータを利用しない場合は省略可能|
 |comment_delete|bool| |True|True の場合、通常コメントを削除、 False の場合は削除しない|
 |newline|str| |'\n'|対象ファイルの改行コード|
+|paramstyle|twsp.ParamStyle| |NAMED|パラメータ表示形式<br>twsp.ParamStyle.NAMED, twsp.ParamStyle.PYFORMAT|
 
 * 戻り値 : tuple(str, dict)
   * str : 解析後SQL
