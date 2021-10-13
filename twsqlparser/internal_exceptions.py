@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# (C) 2020 gomachssm
+# (C) 2021 gomachssm
 
 import enum
 
@@ -16,10 +16,12 @@ class Msg(enum.Enum):
     E0006 = 'Statement result type is not bool. %if statement is "{0}"'
     E0007 = 'Format must be "/*%for ~ in ~*/", value is {0}'
     E0008 = '{0}. %for statement is "{1}"'
+    E0009 = 'Variable "paramstyle" must be either {0} or {1}, but "{2}".'
 
 
 class TwspException(Exception):
     """ twsqlparser内部で利用する例外の基底クラス """
+
     def __init__(self, msgenum=None, *args):
         """例外を作成する
 
