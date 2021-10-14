@@ -9,7 +9,7 @@ from uuid import uuid4
 from functools import lru_cache
 
 from .internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValidateError
-from .const.enums import ParamStyle, CommentType
+from .enums import ParamStyle, CommentType
 
 
 logger = logging.getLogger(__name__)
