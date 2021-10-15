@@ -41,12 +41,20 @@ jobs:
           timestmp=`date +%Y%m%d.%H%M%S`
           echo -e "__version__ = '${version}.${timestmp}'"
           echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
-      - name: pip install
+      - name: pip install for register pypi
         run: pip install -U wheel twine
       - name: build wheel
         run: python setup.py sdist bdist_wheel
       - name: register testpypi
         run: twine upload --verbose -r testpypi dist/*
+      - name: rm source directory
+        run: rm -rf twsqlparser; mkdir twsqlparser
+      - name: pip install for pytest
+        run: pip install -U -r requirements.txt
+      - name: install twsqlparser from test.pypi
+        run: pip install -i https://test.pypi.org/simple/ twsqlparser
+      - name: pytest w/ installed twsp module (not use own source)
+        run: pytest
 
   register_pypi:
     needs: test
@@ -65,11 +73,11 @@ jobs:
           echo -e "username = ${PYPI_USERNAME}" >> ~/.pypirc
           echo -e "password = ${PYPI_PASSWORD}" >> ~/.pypirc
           version=`echo ${GITHUB_REF} | sed -r "s/^.*v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/"`
-          echo -e "__version__ = '${version}'"
-          echo -e "__version__ = '${version}'" >> twsqlparser/__pkg_info__.py
-      - name: pip install
+          echo -e "__version__ = '${version}.${timestmp}'"
+          echo -e "__version__ = '${version}.${timestmp}'" >> twsqlparser/__pkg_info__.py
+      - name: pip install for register pypi
         run: pip install -U wheel twine
       - name: build wheel
         run: python setup.py sdist bdist_wheel
-      - name: register testpypi
+      - name: register pypi
         run: twine upload --verbose dist/*

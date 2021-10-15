@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
-# (C) 2020 gomachssm
+# (C) 2021 gomachssm
 
 import logging
 import os
 import pathlib
-import re
 from copy import deepcopy
-from enum import Enum
 from uuid import uuid4
 from functools import lru_cache
 
 from .internal_exceptions import Msg, TwspException, TwspExecuteError, TwspValidateError
+from .enums import ParamStyle, CommentType
 
 
 logger = logging.getLogger(__name__)
@@ -22,12 +21,6 @@ _VL = 'value'
 _DMY = '...dummy...'
 
 _END = '/*end*/'
-_REG_PARAM = r'/\*:[a-zA-Z0-9_]*\*/'
-_REG_DIRECT = r'/\*\$[a-zA-Z0-9_]*\*/'
-_REG_IF = r'/\*%if .+?\*/'
-_REG_FOR = r'/\*%for .+? in .+?\*/'
-_REG_END = r'/\*end\*/'
-
 _FIND_TARGETS = ('"', "'", '(', '[', '{', '--', '/*', )
 _BRACKET_PARE = {'[': ']', '(': ')', '{': '}'}
 # ([{'"\ 以外の一般的な記号と空白文字
@@ -38,20 +31,8 @@ _EOP_SIMPLE_PARAM = ('!', '#', '$', '%', '&', ')', '-', '=', '^', '~',
 _EOP_END = (_END, )
 
 
-class _CommentType(Enum):
-    # :~*/ に一致する場合
-    PARAM = re.compile(f'^{_REG_PARAM}')
-    # $~*/ に一致する場合
-    DIRECT = re.compile(f'^{_REG_DIRECT}')
-    # %if ~ */ に一致する場合
-    IFEND = re.compile(f'^{_REG_IF}')
-    # %for ~ */ に一致する場合
-    FOREND = re.compile(f'^{_REG_FOR}')
-    # 最初の */まで
-    NORMAL = re.compile(r'^/\*.*?\*/', re.DOTALL)
-
-
-def parse_file(file_path: str, query_params=None, delete_comment=True, encoding='utf-8', newline='\n') -> (str, dict):
+def parse_file(file_path: str, query_params=None, delete_comment=True, encoding='utf-8', newline='\n',
+               paramstyle: ParamStyle = None) -> (str, dict):
     """SQLファイルを読み込み、解析を行う
 
     Args:
@@ -61,6 +42,7 @@ def parse_file(file_path: str, query_params=None, delete_comment=True, encoding=
             デフォルトは True
         encoding (str): 対象ファイルの文字コード デフォルトは utf-8
         newline (str): 対象ファイルの改行コード (デフォルトは '\n')
+        paramstyle (ParamStyle): 解析後のSQLパラメータ書式を決める。未指定時は `NAMED` と同じ扱い
     Returns:
         tuple(str, dict):
             str: 解析後のSQL
@@ -68,13 +50,15 @@ def parse_file(file_path: str, query_params=None, delete_comment=True, encoding=
     """
     try:
         base_sql = _open_file(file_path, encoding=encoding)
-        sql, qparams = parse_sql(base_sql, query_params, delete_comment=delete_comment, newline=newline)
+        sql, qparams = parse_sql(base_sql, query_params, delete_comment=delete_comment, newline=newline,
+                                 paramstyle=paramstyle)
         return sql, qparams
     except TwspException as e:
         logger.error(e.msg_txt)
 
 
-def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n') -> (str, dict):
+def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n',
+              paramstyle: ParamStyle = None) -> (str, dict):
     """SQLの解析を行う.
 
     Args :
@@ -82,6 +66,7 @@ def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n
         query_params (dict): SQL実行時に利用するパラメータ
         delete_comment (bool): True の場合、通常コメントを削除、 False の場合は削除しない (デフォルトは True)
         newline (str): SQLに含まれる改行コード (デフォルトは '\n')
+        paramstyle (ParamStyle): 解析後のSQLパラメータ書式を決める。未指定時は `NAMED` と同じ扱い
 
     Returns:
         tuple(str, dict):
@@ -90,20 +75,26 @@ def parse_sql(base_sql: str, query_params=None, delete_comment=True, newline='\n
     """
     global NEWLINE_CHAR
     NEWLINE_CHAR = newline
+    pstyle = paramstyle or ParamStyle.NAMED
+    _validate_paramstyle(pstyle)
+
+    # PARAMSTYLEの値に応じたパラメータ書式のセット
+    # TODO: グローバルではなく、引数で持ち回せるようにしたい
+    prmfmt = pstyle.value
     try:
         qparams = deepcopy(query_params) if query_params else {}
         _is_collect_type('base_sql', base_sql, str)
         _is_collect_type('query_params', qparams, dict)
         # base_sql = _format_line_forifend(base_sql)
-        sql, _, _ = _parse(base_sql, qparams, delete_comment)
+        sql, _, _ = _parse(base_sql, qparams, delete_comment, prmfmt)
         return sql, qparams
     except TwspException as e:
         logger.error(e)
         # logger.error(e.msg_txt)
 
 
-def _parse(base_sql: str, qparams: dict, delete_comment: bool, eop=None, tmp_params=None, after_pcmt=False,
-           ldng_sp_cnt=0) -> (str, int, int):
+def _parse(base_sql: str, qparams: dict, delete_comment: bool, prmfmt: str, eop=None, tmp_params=None,
+           after_pcmt=False, ldng_sp_cnt=0) -> (str, int, int):
     """ SQLを解析してパラメータを埋め込む
 
     Args:
@@ -130,7 +121,7 @@ def _parse(base_sql: str, qparams: dict, delete_comment: bool, eop=None, tmp_par
     while i < max_idx and not _startswith_eop(base_sql, i, eop):
         c, cc, i = _next_chars(base_sql, i, max_idx, eop)
         c, i, del_last_sp = _parse_switch_by_char(base_sql, c, cc, i, qparams, delete_comment, tmp_params, after_pcmt,
-                                                  ldng_sp_cnt)
+                                                  ldng_sp_cnt, prmfmt)
         if del_last_sp:
             q = _delete_last_space(q)
         ldng_sp_cnt = _update_blank_line(ldng_sp_cnt, c)
@@ -141,7 +132,7 @@ def _parse(base_sql: str, qparams: dict, delete_comment: bool, eop=None, tmp_par
 
 
 def _parse_switch_by_char(base_sql: str, c: str, cc: str, i: int, qparams: dict, delete_comment: bool,
-                          tmp_params: dict, after_pcmt: bool, ldng_sp_cnt: int) -> (str, int, bool):
+                          tmp_params: dict, after_pcmt: bool, ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     del_last_sp = False
     if c in ("'", '"', '(', '[', '{'):
         c, i = _nextstring(c, base_sql, i, qparams, delete_comment, after_pcmt)
@@ -152,7 +143,7 @@ def _parse_switch_by_char(base_sql: str, c: str, cc: str, i: int, qparams: dict,
     elif cc == '/*':
         # 複数行コメント /*...*/ の場合
         c, addi, del_last_sp = _get_multi_line_comment(base_sql[i - 1:], qparams, delete_comment, tmp_params,
-                                                       ldng_sp_cnt)
+                                                       ldng_sp_cnt, prmfmt)
         i += addi - 1
     return c, i, del_last_sp
 
@@ -240,16 +231,16 @@ def _single_line_comment(sql_comment: str) -> (str, int):
 
 
 def _get_multi_line_comment(sql_comment: str, qparams: dict, delete_comment: bool, tmp_params: dict,
-                            ldng_sp_cnt: int) -> (str, int, bool):
+                            ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     c, addi, is_comment, delete_last_sp = _multi_line_comment(sql_comment, qparams, delete_comment, tmp_params,
-                                                              ldng_sp_cnt)
+                                                              ldng_sp_cnt, prmfmt)
     if is_comment and delete_comment:
         c = ''
     return c, addi, delete_last_sp
 
 
 def _multi_line_comment(sql_comment: str, qparams: dict, delete_comment: bool, tmp_params: dict,
-                        ldng_sp_cnt: int) -> (str, int, bool):
+                        ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     # この関数が呼び出される時、文字列は必ず /* から始まる
     cmtype, comment_string = _check_comment_type(sql_comment)
     is_comment = False
@@ -257,18 +248,18 @@ def _multi_line_comment(sql_comment: str, qparams: dict, delete_comment: bool, t
     # ex: comment_string : "/*:parameter*/"
     #     after_comment  : "'hogehoge' from xxx"
     after_comment = sql_comment[len(comment_string):]
-    if cmtype is _CommentType.PARAM:        # /*:param*/
-        comment_string, idx = _parse_param_comment(comment_string, after_comment, qparams, tmp_params)
-    elif cmtype is _CommentType.DIRECT:     # /*$param*/
-        comment_string, idx = _parse_direct_comment(comment_string, after_comment, qparams, tmp_params)
-    elif cmtype is _CommentType.IFEND:      # /*%if ~*/
+    if cmtype is CommentType.PARAM:        # /*:param*/
+        comment_string, idx = _parse_param_comment(comment_string, after_comment, qparams, tmp_params, prmfmt)
+    elif cmtype is CommentType.DIRECT:     # /*$param*/
+        comment_string, idx = _parse_direct_comment(comment_string, after_comment, qparams, tmp_params, prmfmt)
+    elif cmtype is CommentType.IFEND:      # /*%if ~*/
         # TODO: ELSE対応
         comment_string, idx, del_last_sp = _parse_if_comment(
-            comment_string, after_comment, qparams, delete_comment, tmp_params, ldng_sp_cnt)
-    elif cmtype is _CommentType.FOREND:     # /*%for ~*/
+            comment_string, after_comment, qparams, delete_comment, tmp_params, ldng_sp_cnt, prmfmt)
+    elif cmtype is CommentType.FOREND:     # /*%for ~*/
         comment_string, idx, del_last_sp = _parse_for_comment(
-            comment_string, after_comment, qparams, delete_comment, tmp_params, ldng_sp_cnt)
-    elif cmtype is _CommentType.NORMAL:
+            comment_string, after_comment, qparams, delete_comment, tmp_params, ldng_sp_cnt, prmfmt)
+    elif cmtype is CommentType.NORMAL:
         is_comment = True
         idx = len(comment_string)
     else:
@@ -276,7 +267,8 @@ def _multi_line_comment(sql_comment: str, qparams: dict, delete_comment: bool, t
     return comment_string, idx, is_comment, del_last_sp
 
 
-def _parse_param_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict) -> (str, int):
+def _parse_param_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict,
+                         prmfmt: str) -> (str, int):
     """
     Args:
         comment_string (str): コメント部分の文字列
@@ -287,11 +279,12 @@ def _parse_param_comment(comment_string: str, after_comment: str, qparams: dict,
             str:
             int:
     """
-    bind_name, _, load_len = _parse_simple_comment(comment_string, after_comment, qparams, tmp_params)
+    bind_name, _, load_len = _parse_simple_comment(comment_string, after_comment, qparams, tmp_params, prmfmt)
     return bind_name, load_len
 
 
-def _parse_direct_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict) -> (str, int):
+def _parse_direct_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict,
+                          prmfmt: str) -> (str, int):
     """
     Args:
         comment_string (str): コメント部分の文字列
@@ -304,41 +297,42 @@ def _parse_direct_comment(comment_string: str, after_comment: str, qparams: dict
             int:
     """
     merged_params = _merge_qparams(qparams, tmp_params)
-    _, value, load_len = _parse_simple_comment(comment_string, after_comment, merged_params, {})
+    _, value, load_len = _parse_simple_comment(comment_string, after_comment, merged_params, {}, prmfmt)
     return value, load_len
 
 
-def _parse_simple_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict) -> (str, str, int):
+def _parse_simple_comment(comment_string: str, after_comment: str, qparams: dict, tmp_params: dict,
+                          prmfmt: str) -> (str, str, int):
     # comment_string: '/*:param*/' or '/*$param*/'
     param_name = comment_string[3:-2]
-    bind_name, value = _update_qparams_if_exist_tmp(param_name, qparams, tmp_params)
+    bind_name, value = _update_qparams_if_exist_tmp(param_name, qparams, tmp_params, prmfmt)
 
-    dummy_value, _, _ = _parse(after_comment, {}, False, eop=_EOP_SIMPLE_PARAM, after_pcmt=True)
+    dummy_value, _, _ = _parse(after_comment, {}, False, prmfmt, eop=_EOP_SIMPLE_PARAM, after_pcmt=True)
     load_len = len(comment_string) + len(dummy_value)
 
     return bind_name, value, load_len
 
 
-def _update_qparams_if_exist_tmp(param: str, qparams: dict, tmp_params: dict):
+def _update_qparams_if_exist_tmp(param: str, qparams: dict, tmp_params: dict, prmfmt: str):
     tmp_name = tmp_params.get(param, {}).get(_TN)
     if _tmpp_is_dummy(tmp_params):
         # tmp_paramsがダミーの場合
-        updated_bind_name = f':{param}'
+        updated_bind_name = prmfmt.format(param)
         updated_param_value = ''
     elif tmp_name is not None:
-        updated_bind_name = f':{tmp_name}'
+        updated_bind_name = prmfmt.format(tmp_name)
         updated_param_value = tmp_params.get(param, {}).get(_VL)
         qparams[tmp_name] = updated_param_value
     else:
-        updated_bind_name = f':{param}'
+        updated_bind_name = prmfmt.format(param)
         updated_param_value = qparams.get(param)
     return updated_bind_name, f'{updated_param_value}'
 
 
 def _parse_if_comment(comment_string: str, after_comment: str, qparams: dict, delete_comment: bool,
-                      tmp_params: dict, ldng_sp_cnt: int) -> (str, int, bool):
+                      tmp_params: dict, ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     if_strings, after_idx, del_last_sp = _get_str_in_forif(after_comment, qparams, delete_comment, tmp_params,
-                                                           ldng_sp_cnt)
+                                                           ldng_sp_cnt, prmfmt)
     is_true = _execute_if_statement(comment_string[3:-2], qparams, tmp_params)
     output_value = ''.join(if_strings) if is_true else ''
     addi = len(comment_string) + after_idx
@@ -346,14 +340,14 @@ def _parse_if_comment(comment_string: str, after_comment: str, qparams: dict, de
 
 
 def _parse_for_comment(comment_string: str, after_comment: str, qparams: dict, delete_comment: bool,
-                       tmp_params: dict, ldng_sp_cnt: int) -> (str, int, bool):
+                       tmp_params: dict, ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     # comment_string: /*%for x in list_obj*/
     # after_comment: .*/*end*/
     for_strings, after_idx, del_last_sp = [], 0, False
     # 最後の1回はfor~endまでの文字数カウントのため、ダミーで空dictが返される
     for tmp_params in _get_for_variable_names(comment_string, qparams, tmp_params):
         _for_strings, after_idx, del_last_sp = _get_str_in_forif(after_comment, qparams, delete_comment, tmp_params,
-                                                                 ldng_sp_cnt)
+                                                                 ldng_sp_cnt, prmfmt)
         for_strings.append(_for_strings)
     # 最後の1ループ分は無視
     output_value = ''.join(for_strings[:-1])
@@ -423,7 +417,7 @@ def _gen_tmp_name(vname: str, loop_count: int, prefix: str) -> str:
 
 
 def _get_str_in_forif(after_comment: str, qparams: dict, delete_comment: bool, tmp_params: dict,
-                      ldng_sp_cnt: int) -> (str, int, bool):
+                      ldng_sp_cnt: int, prmfmt: str) -> (str, int, bool):
     """
     Args:
         after_comment (str): /*%for ~*/または/*%if ~*/の直後に続く文字列
@@ -438,7 +432,7 @@ def _get_str_in_forif(after_comment: str, qparams: dict, delete_comment: bool, t
     nextq, after_idx, del_last_sp = _nxtq_in_forif(after_comment, ldng_sp_cnt)
     # 改行削除済みの場合、 ldng_sp_cnt は 0 から
     ldng_sp_cnt = -1 if after_comment == nextq else 0
-    output_value, _, vlen = _parse(nextq, qparams, delete_comment, _EOP_END, tmp_params=tmp_params,
+    output_value, _, vlen = _parse(nextq, qparams, delete_comment, prmfmt, _EOP_END, tmp_params=tmp_params,
                                    ldng_sp_cnt=ldng_sp_cnt)
     nextq = nextq[vlen:]
     after_idx += vlen
@@ -499,13 +493,13 @@ def _execute_if_statement(statement: str, qparams: dict, tmp_params: dict) -> bo
     return is_true
 
 
-def _check_comment_type(sql_after_comment: str) -> (_CommentType, str):
+def _check_comment_type(sql_after_comment: str) -> (CommentType, str):
     # /*:param*/                    -> :param       利用できる文字は英数字とアンダースコア
     # /*$param*/                    -> {param}      利用できる文字は英数字とアンダースコア
     # /*%if a == b*/hoge/*end*/     -> 条件がTrueの場合、/*end*/までに挟まれた部分が出力
     # /*%for a in b*/and a /*end*/  -> and a and a and a and a ... iterate by b
     # other patterns are multi line comment.
-    for ctyp in _CommentType:
+    for ctyp in CommentType:
         matched = ctyp.value.findall(sql_after_comment)
         if len(matched) > 0:
             return ctyp, matched[0]
@@ -597,3 +591,10 @@ def _merge_qparams(qparams: dict, tmp_params: dict) -> dict:
     for key, value in _tmpp_items(tmp_params):
         merged_params[key] = value
     return merged_params
+
+
+def _validate_paramstyle(paramstyle):
+    if (not isinstance(paramstyle, ParamStyle)) or paramstyle not in ParamStyle:
+        ps = [f'{p.__class__.__name__}.{p.name}' for p in ParamStyle]
+        raise TwspValidateError(Msg.E0009, f'{", ".join(ps[:-1])}', ps[-1], paramstyle)
+    return True

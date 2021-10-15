@@ -5,7 +5,7 @@ import os
 import pytest
 import unittest.mock
 
-from twsqlparser import twsp
+from twsqlparser import twsp, internal_exceptions
 
 DIRNAME = os.path.abspath(os.path.dirname(__file__))
 UUID4PATH = 'twsqlparser.twsp.uuid4'
@@ -47,7 +47,7 @@ def mockid():
     ('"ho/*end*/"ge', {}, False, twsp._EOP_END, False, -1, '"ho/*end*/"ge', -1, 13),
 ])
 def test_unit__parse(bs, qp, dc, eop, ap, lsc, expr, expl, expi):
-    result, ldng_sp_cnt, idx = twsp._parse(bs, qp, dc, eop, ap, lsc)
+    result, ldng_sp_cnt, idx = twsp._parse(bs, qp, dc, ':{0}', eop=eop, after_pcmt=ap, ldng_sp_cnt=lsc)
     assert result == expr
     assert ldng_sp_cnt == expl
     assert idx == expi
@@ -308,21 +308,23 @@ def test_parse_multicomment_for_nested_param(q, delete_comment):
     assert_result_param(params, rparam, q.params)
 
 
+@pytest.mark.parametrize('paramstyle', twsp.ParamStyle)
 @pytest.mark.parametrize('path, addparams', [
     ('example1_if', {}),
     ('example2_for', {}),
     ('nested_for', {'xxxxx4_0_x': 0, 'xxxxx4_1_x': 1, }),
 ])
-def test_parse_file(path, addparams):
+def test_parse_file(path, addparams, paramstyle):
     params = {'table_name': 'TABNAME',
               't_param': True, 'f_param': False,
               'c1': "'ABC'", 'c2': "'IJK'",
               'dct': {'k1': 'v1', 'k2': 'v2'}}
     input_path = absp(f'./data/input/{path}.sql')
     with unittest.mock.patch(UUID4PATH, mockid):
-        actual, rparam = twsp.parse_file(input_path, params, False)
-    exp = read(absp(f'./data/expected/{path}.sql'))
-    assert_sql_oneline(actual, exp, f'{path}.sql')
+        actual, rparam = twsp.parse_file(input_path, params, False, paramstyle=paramstyle)
+    pname = str(paramstyle.name).lower()
+    exp = read(absp(f'./data/expected/{path}_{pname}.sql'))
+    assert_sql_oneline(actual, exp, f'{path}_{pname}.sql')
     assert_result_param(params, rparam, addparams)
 
 
@@ -365,6 +367,12 @@ def assert_result_param(base: dict, result: dict, addparam: dict):
         actual[k] = result.get(k)
         expected[k] = exp.get(k)
     assert actual == expected
+
+
+@pytest.mark.parametrize('wrong_param', ('xxx', ))
+def test_wrong_paramstyle(wrong_param):
+    with pytest.raises(internal_exceptions.TwspValidateError):
+        twsp.parse_sql('aaa', paramstyle=wrong_param)
 
 
 def repcrlf(val):
