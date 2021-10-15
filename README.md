@@ -110,11 +110,11 @@ where isbn = /*:isbn*/'978-1-23-456789-0'
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
 |file_path|str|*| | 解析対象ファイルの絶対パス<br>絶対パスを指定する必要があります。 |
-|query_params|dict| |None|`parse_sql` 参照|
-|comment_delete|bool| |True|`parse_sql` 参照|
+|query_params|dict| |None|SQL実行時に利用するパラメータ<br>パラメータを利用しない場合は省略可能|
+|comment_delete|bool| |True|True の場合、通常コメントを削除、 False の場合は削除しない|
 |encoding|str| |'utf-8'|対象ファイルの文字コード|
 |newline|str| |'\n'|対象ファイルの改行コード|
-|paramstyle|twsp.ParamStyle| |NAMED|パラメータ表示形式<br>twsp.ParamStyle.NAMED, twsp.ParamStyle.PYFORMAT|
+|paramstyle|twsqlparser.ParamStyle| |NAMED|以下のパラメータ表示形式<br>twsqlparser.ParamStyle.NAMED<br>twsqlparser.ParamStyle.PYFORMAT|
 
 戻り値 は `parse_sql` 参照
 
@@ -123,10 +123,10 @@ where isbn = /*:isbn*/'978-1-23-456789-0'
 |引数|型|必須|初期値|説明|
 | :---: | :---: | :---: | :---: | --- |
 |base_sql|str|*| |解析対象SQL|
-|query_params|dict| |None|SQL実行時に利用するパラメータ<br>パラメータを利用しない場合は省略可能|
-|comment_delete|bool| |True|True の場合、通常コメントを削除、 False の場合は削除しない|
-|newline|str| |'\n'|対象ファイルの改行コード|
-|paramstyle|twsp.ParamStyle| |NAMED|パラメータ表示形式<br>twsp.ParamStyle.NAMED, twsp.ParamStyle.PYFORMAT|
+|query_params|dict| |None|`twsqlparser.parse_file` 参照|
+|comment_delete|bool| |True|`twsqlparser.parse_file` 参照|
+|newline|str| |'\n'|`twsqlparser.parse_file` 参照|
+|paramstyle|twsqlparser.ParamStyle| |NAMED|`twsqlparser.parse_file` 参照|
 
 * 戻り値 : tuple(str, dict)
   * str : 解析後SQL
@@ -137,6 +137,9 @@ where isbn = /*:isbn*/'978-1-23-456789-0'
     * この処理は引数 query_params には影響を与えません。
 
 ## コメント解析仕様
+
+以下に示す例は全て `ParamStyle.NAMED` の場合です。
+`ParamStyle.PYFORMAT` の場合は `%(param)s` でフォーマットされます。
 
 ### 行コメント
 
